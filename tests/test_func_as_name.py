@@ -16,5 +16,22 @@ def receiver(sender):
     print('sender %s' % sender)
 
 
-sig1.connect(receiver, sender=name1)
-sig1.send(name1)
+from signals import SenderWrapper
+ToggledSender = SenderWrapper
+
+
+# def clone(sender):
+
+from blinker.base import hashable_identity
+
+
+
+cloned1 = ToggledSender(name1)
+cloned2 = ToggledSender(cloned1)
+
+print(hashable_identity(cloned1) == hashable_identity(cloned2))
+
+sig1.connect(receiver, sender=cloned1)
+cloned2.deactivate()
+cloned2.activate()
+sig1.send(cloned2)

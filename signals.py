@@ -1,13 +1,15 @@
 
 import collections
-from blinker import Signal, signal, symbol
+from blinker import Signal, signal
+from blinker.base import symbol
 
 
+# .toggle._SenderWrapper
 
 # rotating ?
 
 
-class ToggleSenderWrapper:
+class SenderWrapper:
     # ugly hack
     # maybe pull request to blinker
 
@@ -16,19 +18,20 @@ class ToggleSenderWrapper:
     __func__ = None
 
     def __init__(self, sender, active=True):
+        # follow __self__ links
         self.sender = sender
         if active:
-            self.__func__ = sender
+            self.activate()
 
-    def toggle(self):
-        if self.__func__ is not None:
-            del self.__func__
-        else:
-            self.__func__ = self.sender
+    def activate(self):
+        self.__self__ = self.sender
+
+    def deactivate(self):
+        del self.__self__
+        
 
 
-
-class Signal_ReceiversQueue(Signal):
+class ExtSignal(Signal):
     '''
     TODO
     '''
@@ -45,12 +48,9 @@ class Signal_ReceiversQueue(Signal):
         sender[0]
         awaited_sender = self._queue[-1]
 
+    # def connect_ordered(self, receiver, sender=ANY, weak=True):
+    #     cloned_sender = SenderWrapper(sender, active=False)
 
-class Signal_OrderedReceivers(Signal):
-    
-    def __init__(self, doc=None):
-        super().__init__(doc)
-        self.receivers = collections.OrderedDict()
 
 # ns for ctx tlocal
 
@@ -58,7 +58,7 @@ def mixed_signal(name):
     1
 
 
-class MySignal:
+class _MySignal:
     
     def send(): 1
     
