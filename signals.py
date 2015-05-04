@@ -8,6 +8,7 @@ from blinker.base import symbol
 
 # rotating ?
 
+# awaited sender, fake sender
 
 class SenderWrapper:
     # ugly hack
@@ -18,8 +19,10 @@ class SenderWrapper:
     __func__ = None
 
     def __init__(self, sender, active=True):
-        # follow __self__ links
-        self.sender = sender
+        try:
+            self.sender = sender.sender
+        except AttributeError:
+            self.sender = sender
         if active:
             self.activate()
 
@@ -28,10 +31,31 @@ class SenderWrapper:
 
     def deactivate(self):
         del self.__self__
-        
 
 
-class ExtSignal(Signal):
+'''
+"fake" senders - an implementation detail
+
+by q index: + 1 | rotate, [0]
+
+'''
+
+# actually, rec.
+class _EnqueuedRec:
+
+    def __init__(self, sender, rec, q):
+        try:
+            self.sender = sender.sender
+        except AttributeError:
+            self.sender = sender
+        self._queue = q
+
+    @property
+    def active(self):
+        1
+
+
+class Signal_RevolvingReceiver(Signal):
     '''
     TODO
     '''
@@ -40,7 +64,7 @@ class ExtSignal(Signal):
         super().__init__(doc)
         self._queue = collections.deque()
 
-    # def 
+    # def
 
     def send(self, *sender, **kwargs):
         super().send(*sender, **kwargs)
@@ -48,28 +72,12 @@ class ExtSignal(Signal):
         sender[0]
         awaited_sender = self._queue[-1]
 
-    # def connect_ordered(self, receiver, sender=ANY, weak=True):
-    #     cloned_sender = SenderWrapper(sender, active=False)
+    def connect_ordered(self, receiver, sender=Signal.ANY, weak=True):
+        assert isinstance(sender, SenderWrapper)
+        __sender = SenderWrapper(sender, self._queue)        
+        self.connect(receiver, sender=__sender)
+        self._queue.append(receiver)
 
 
-# ns for ctx tlocal
 
-def mixed_signal(name):
-    1
-
-
-class _MySignal:
-    
-    def send(): 1
-    
-    def connect(): 1
-    
-    def connect_ordered(): 1
-    
-    def disconnect(): 1
-    
-    def has_receivers_for(): 1
-    
-    def receivers_for(): 1
-    
     
