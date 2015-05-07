@@ -72,6 +72,13 @@ class Signal_RevolvingReceiver(Signal):
         sender[0]
         awaited_sender = self._queue[-1]
 
+
+    # when handler worked, swap active signal
+
+    ## (sender, active) == (expected_sender, expected_sender)
+    # use "receiver_disconnected" event
+
+
     def connect_ordered(self, receiver, sender=Signal.ANY, weak=True):
         assert isinstance(sender, SenderWrapper)
         __sender = SenderWrapper(sender, self._queue)        
