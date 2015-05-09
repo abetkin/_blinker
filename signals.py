@@ -55,9 +55,33 @@ class _EnqueuedRec:
         1
 
 
+class CustomHasherMixin:
+
+    __func__ = __self__ = None
+
+    def hash(self):
+        raise NotImplementedError
+
+
+class OrderedSignalWrapper:
+    '''
+    (sender, active)
+    '''
+
+
+
 class Signal_RevolvingReceiver(Signal):
     '''
-    TODO
+    1) connect | send
+    same obj
+    func -> obj
+    clone:
+
+    sender(func, q)
+
+    sig.send(sender=obj, ..)
+
+    Wr(sender, active) == sender (by hash)
     '''
 
     def __init__(self, doc=None):
@@ -73,10 +97,11 @@ class Signal_RevolvingReceiver(Signal):
         awaited_sender = self._queue[-1]
 
 
-    # when handler worked, swap active signal
+    # when handler worked, swap active signal (modify sender)
 
     ## (sender, active) == (expected_sender, expected_sender)
-    # use "receiver_disconnected" event
+    #
+    # q: [sender, ..]
 
 
     def connect_ordered(self, receiver, sender=Signal.ANY, weak=True):
