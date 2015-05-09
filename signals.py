@@ -55,20 +55,80 @@ class _EnqueuedRec:
         1
 
 
+from functools import wraps
+
+def lazyattr(name):
+    def decorator(method):
+        @wraps(method)
+        def getter(self, *args, **kwargs):
+            if not hasattr(self, name):
+                setattr(self, name, method(self, *args, **kwargs))
+            return getattr(self, name)
+        return property(getter)
+    return decorator
+
+
+
 class CustomHasherMixin:
 
-    __func__ = __self__ = None
+    __func__ = None
 
-    def hash(self):
+    @lazyattr('__self__')
+    def hashable_id(self):
+        return self.get_hashable_id()
+
+    def get_hashable_id(self):
         raise NotImplementedError
 
 
-class OrderedSignalWrapper:
+from collections import deque
+
+def get_context(_ctx={}):
+    return _ctx
+
+# ord
+
+class _Sender(CustomHasherMixin):
+
+    def get_hashable_id(self):
+        '''
+        '''
+        return True
+
+
+class _OrdSender(CustomHasherMixin):
     '''
+    modifies what to wait for
     (sender, active)
     '''
+    def __init__(self, sender):
+        self.sender = sender
+
+    @classmethod
+    def wrap(cls, func):
+        return cls(func)
+
+    @lazyattr('_queue')
+    def queue(self):
+        return get_context().setdefault('_queue', deque())
+
+    def get_hashable_id(self):
+        # calibrate for __self__
+        return 0 if self.queue.active is self.sender else 'Inactive'
 
 
+# encaps: connect_ordered, connect_ordered_via
+
+s_save = _Sender(lambda: 'Srlz.save')
+
+
+sig = 'pre'
+
+@sig.connect_via(s_save)
+def pp(obj):
+    print('srls: %s', obj)
+
+sig.connect(rec, rec.sender)
 
 class Signal_RevolvingReceiver(Signal):
     '''
