@@ -3,58 +3,6 @@ import collections
 from blinker import Signal, signal
 from blinker.base import symbol
 
-
-# .toggle._SenderWrapper
-
-# rotating ?
-
-# awaited sender, fake sender
-
-class SenderWrapper:
-    # ugly hack
-    # maybe pull request to blinker
-
-
-    __self__ = None
-    __func__ = None
-
-    def __init__(self, sender, active=True):
-        try:
-            self.sender = sender.sender
-        except AttributeError:
-            self.sender = sender
-        if active:
-            self.activate()
-
-    def activate(self):
-        self.__self__ = self.sender
-
-    def deactivate(self):
-        del self.__self__
-
-
-'''
-"fake" senders - an implementation detail
-
-by q index: + 1 | rotate, [0]
-
-'''
-
-# actually, rec.
-class _EnqueuedRec:
-
-    def __init__(self, sender, rec, q):
-        try:
-            self.sender = sender.sender
-        except AttributeError:
-            self.sender = sender
-        self._queue = q
-
-    @property
-    def active(self):
-        1
-
-
 from functools import wraps
 
 def lazyattr(name):
@@ -67,17 +15,33 @@ def lazyattr(name):
         return property(getter)
     return decorator
 
+from blinker.base import hashable_identity
+
+class CustomHasherWrapper:
+
+    def __init__(self, wrapped):
+        self.wrapped = wrapped
+
+    @property
+    def __self__(self):
+        return hashable_identity(self.wrapped)
+
+    @property
+    def __func__(self):
+        return self.custom_hash()
+
+    def custom_hash(self):
+        raise NotImplementedError
 
 
-class CustomHasherMixin:
+class TogglingSenderWrapper(CustomHasherWrapper):
+    '''
+    Active / inactive.
+    '''
+    def custom_hash(self):
+        return self.is_active()
 
-    __func__ = None
-
-    @lazyattr('__self__')
-    def hashable_id(self):
-        return self.get_hashable_id()
-
-    def get_hashable_id(self):
+    def is_active(self):
         raise NotImplementedError
 
 
@@ -88,60 +52,34 @@ def get_context(_ctx={}):
 
 # ord
 
-class _Sender(CustomHasherMixin):
 
-    def get_hashable_id(self):
-        '''
-        '''
+# wrappers.py
+
+class SimpleSenderWrapper(CustomHasherWrapper):
+    '''
+    Always active.
+    '''
+    def is_active(self):
         return True
 
-
-class _OrdSender(CustomHasherMixin):
-    '''
-    modifies what to wait for
-    (sender, active)
-    '''
-    def __init__(self, sender):
-        self.sender = sender
-
-    @classmethod
-    def wrap(cls, func):
-        return cls(func)
+class OrderQueueSenderWrapper(TogglingSenderWrapper):
 
     @lazyattr('_queue')
     def queue(self):
-        return get_context().setdefault('_queue', deque())
+        return get_context().setdefault('_events_queue', deque())
 
-    def get_hashable_id(self):
-        # calibrate for __self__
-        return 0 if self.queue.active is self.sender else 'Inactive'
-
-
-# encaps: connect_ordered, connect_ordered_via
-
-s_save = _Sender(lambda: 'Srlz.save')
+    def is_active(self):
+        '''return self.queue.active is self.sender
+        '''
 
 
-sig = 'pre'
 
-@sig.connect_via(s_save)
-def pp(obj):
-    print('srls: %s', obj)
 
-sig.connect(rec, rec.sender)
 
-class Signal_RevolvingReceiver(Signal):
+class FunctionSignal(Signal):
     '''
-    1) connect | send
-    same obj
-    func -> obj
-    clone:
-
-    sender(func, q)
-
-    sig.send(sender=obj, ..)
-
-    Wr(sender, active) == sender (by hash)
+    The pre- and post-execution signals.
+    Senders of these are functions (wrapped).
     '''
 
     def __init__(self, doc=None):
