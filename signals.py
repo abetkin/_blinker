@@ -69,9 +69,8 @@ class OrderQueueSenderWrapper(TogglingSenderWrapper):
         return get_context().setdefault('_events_queue', deque())
 
     def is_active(self):
-        '''return self.queue.active is self.sender
-        '''
-
+        awaited_sender = self.queue[0] # deque
+        return self.sender is awaited_sender
 
 
 
